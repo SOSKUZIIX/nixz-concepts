@@ -7,94 +7,87 @@
   const N = window.NIXZ || { products: [], site: {} };
   const SITE = N.site || {};
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
   const money = (n) => 'R' + String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
-  /* ------------------------------------------------------------------ Nav */
-  const nav = $('[data-nav]');
-  const onScroll = () => nav && nav.classList.toggle('is-scrolled', window.scrollY > 4);
-  onScroll();
-  window.addEventListener('scroll', onScroll, { passive: true });
-
+  /* ------------------------------------------ Header: clear over the hero, white once scrolled */
+  const hdr = $('[data-hdr]');
   const burger = $('[data-burger]');
   const menu = $('[data-menu]');
+  const solidNow = () =>
+    document.body.classList.contains('page-solid') || window.scrollY > 24 || Boolean(menu && menu.classList.contains('is-open'));
+  const paintHeader = () => hdr && hdr.classList.toggle('is-solid', solidNow());
+  paintHeader();
+  window.addEventListener('scroll', paintHeader, { passive: true });
+
+  const setMenu = (open) => {
+    if (!menu || !burger || !hdr) return;
+    if (open) menu.style.setProperty('--menu-top', Math.max(0, Math.round(hdr.getBoundingClientRect().bottom)) + 'px');
+    menu.classList.toggle('is-open', open);
+    menu.setAttribute('aria-hidden', String(!open));
+    burger.setAttribute('aria-expanded', String(open));
+    burger.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    document.body.classList.toggle('is-locked', open);
+    paintHeader();
+  };
   if (burger && menu) {
-    const set = (open) => {
-      menu.classList.toggle('is-open', open);
-      menu.setAttribute('aria-hidden', String(!open));
-      burger.setAttribute('aria-expanded', String(open));
-      burger.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
-      document.body.classList.toggle('is-locked', open);
+    burger.addEventListener('click', () => setMenu(!menu.classList.contains('is-open')));
+    menu.addEventListener('click', (e) => e.target.closest('a, button') && setMenu(false));
+    document.addEventListener('keydown', (e) => e.key === 'Escape' && menu.classList.contains('is-open') && (setMenu(false), burger.focus()));
+    window.matchMedia('(min-width: 901px)').addEventListener('change', (e) => e.matches && setMenu(false));
+  }
+
+  /* ------------------------------------------------------------------- Hero slideshow */
+  const hero = $('[data-hero]');
+  if (hero) {
+    const slides = $$('.hero__slide', hero);
+    const dots = $$('.hero__dot', hero);
+    const pauseBtn = $('[data-pause]', hero);
+    let index = 0;
+    let timer = null;
+    let paused = false;
+    const show = (n) => {
+      index = (n + slides.length) % slides.length;
+      slides.forEach((s, i) => s.classList.toggle('is-active', i === index));
+      dots.forEach((d, i) => {
+        d.classList.toggle('is-active', i === index);
+        if (i === index) d.setAttribute('aria-current', 'true');
+        else d.removeAttribute('aria-current');
+      });
     };
-    burger.addEventListener('click', () => set(!menu.classList.contains('is-open')));
-    menu.addEventListener('click', (e) => e.target.closest('a') && set(false));
-    document.addEventListener('keydown', (e) => e.key === 'Escape' && menu.classList.contains('is-open') && (set(false), burger.focus()));
-    window.matchMedia('(min-width: 861px)').addEventListener('change', (e) => e.matches && set(false));
-  }
-
-  /* ----------------------------------------- Hero image grows as you scroll */
-  const media = $('[data-hero-media]');
-  if (media && !reduce) {
-    let ticking = false;
-    const update = () => {
-      ticking = false;
-      const top = media.getBoundingClientRect().top;
-      media.style.setProperty('--p', clamp(1 - top / (window.innerHeight * 0.62), 0, 1).toFixed(3));
+    const stop = () => (clearInterval(timer), (timer = null));
+    const play = () => {
+      if (reduce || paused || slides.length < 2) return;
+      stop();
+      timer = setInterval(() => show(index + 1), 6500);
     };
-    window.addEventListener('scroll', () => !ticking && ((ticking = true), requestAnimationFrame(update)), { passive: true });
-    window.addEventListener('resize', update);
-    update();
+    dots.forEach((d) => d.addEventListener('click', () => (show(Number(d.dataset.dot)), play())));
+    if (pauseBtn) {
+      pauseBtn.addEventListener('click', () => {
+        paused = !paused;
+        pauseBtn.setAttribute('aria-pressed', String(paused));
+        pauseBtn.setAttribute('aria-label', paused ? 'Play slideshow' : 'Pause slideshow');
+        paused ? stop() : play();
+      });
+    }
+    hero.addEventListener('mouseenter', stop);
+    hero.addEventListener('mouseleave', play);
+    hero.addEventListener('focusin', stop);
+    hero.addEventListener('focusout', play);
+    document.addEventListener('visibilitychange', () => (document.hidden ? stop() : play()));
+    play();
   }
 
-  /* ------------------------------------------- Statement lights up by word */
-  const words = $('[data-words]');
-  if (words) {
-    const parts = words.textContent.trim().split(/\s+/);
-    words.innerHTML = parts.map((w) => `<span>${esc(w)}</span>`).join(' ');
-    const spans = $$('span', words);
-    const light = () => {
-      const r = words.getBoundingClientRect();
-      const p = reduce ? 1 : clamp((window.innerHeight * 0.82 - r.top) / (r.height + window.innerHeight * 0.3), 0, 1);
-      const upto = Math.ceil(p * spans.length * 1.1);
-      spans.forEach((s, i) => s.classList.toggle('on', i < upto));
-    };
-    window.addEventListener('scroll', light, { passive: true });
-    window.addEventListener('resize', light);
-    light();
-  }
-
-  /* ------------------------------------------------------------ Scroll reveal */
-  const targets = $$('.sec h2, .sec .sub, .hl, .tile, .pcard, .rev, .vcard, .story__img, .story__text, .range__grid > div, .look, .seg');
-  targets.forEach((el, i) => {
-    el.classList.add('rv');
-    el.style.setProperty('--i', String(i % 4));
-  });
-  if ('IntersectionObserver' in window && !reduce) {
-    const io = new IntersectionObserver(
-      (entries) =>
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-          entry.target.classList.add('in');
-          io.unobserve(entry.target);
-        }),
-      { rootMargin: '0px 0px -5% 0px', threshold: 0.05 }
-    );
-    targets.forEach((t) => io.observe(t));
-    setTimeout(() => targets.forEach((t) => t.classList.add('in')), 6000);
-  } else {
-    targets.forEach((t) => t.classList.add('in'));
-  }
-
-  /* ------------------------------------------------------------------ Rails */
-  $$('[data-rail]').forEach((root) => {
+  /* ----------------------------------------------------------------------- Carousels */
+  $$('.rail').forEach((root) => {
     const track = $('.rail__track', root);
     const prev = $('[data-prev]', root);
     const next = $('[data-next]', root);
+    if (!track || !prev || !next) return;
     const step = () => {
       const first = track.firstElementChild;
       const gap = parseFloat(getComputedStyle(track).columnGap) || 0;
-      return first ? first.getBoundingClientRect().width + gap : track.clientWidth * 0.8;
+      return first ? (first.getBoundingClientRect().width + gap) * 2 : track.clientWidth * 0.8;
     };
     const update = () => {
       prev.disabled = track.scrollLeft <= 2;
@@ -111,34 +104,46 @@
     update();
   });
 
-  /* ------------------------------------------------------------------ Store */
+  /* --------------------------------------- Shop all: filter, and jump links from anywhere */
   const grid = $('[data-grid]');
-  const seg = $('[data-seg]');
-  const label = $('[data-shop-label]');
-  if (grid && seg) {
-    const cards = $$('.pcard', grid);
-    const buttons = $$('[data-filter]', seg);
+  const tabs = $('[data-tabs]');
+  if (grid && tabs) {
+    const cards = $$('.pc', grid);
+    const buttons = $$('[data-filter]', tabs);
     const apply = (filter) => {
       cards.forEach((c) => (c.hidden = !(filter === 'all' || c.dataset.cat === filter)));
       buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.filter === filter)));
-      const active = buttons.find((b) => b.dataset.filter === filter);
-      if (label && active) label.textContent = filter === 'all' ? 'Shop All' : active.textContent;
     };
     buttons.forEach((b) => b.addEventListener('click', () => apply(b.dataset.filter)));
-    // Category tiles and footer links jump to the store with that category selected.
     document.addEventListener('click', (e) => {
       const go = e.target.closest('[data-go]');
-      if (!go) return;
-      apply(go.dataset.go);
+      if (go) apply(go.dataset.go);
     });
   }
 
-  /* ------------------------------------------------------------ Product sheet */
+  /* ------------------------------------------------------------- Dialogs: sheet and sizes */
+  let lastFocus = null;
+  $$('dialog').forEach((d) => {
+    d.addEventListener('click', (e) => (e.target === d || e.target.closest('[data-sheet-close]')) && d.close());
+    d.addEventListener('close', () => {
+      document.body.classList.remove('is-locked');
+      if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
+    });
+  });
+
+  const sizes = $('#sizes');
+  document.addEventListener('click', (e) => {
+    if (!sizes || !e.target.closest('[data-size-open]')) return;
+    lastFocus = document.activeElement;
+    if (menu && menu.classList.contains('is-open')) setMenu(false);
+    sizes.showModal();
+    document.body.classList.add('is-locked');
+  });
+
   const sheet = $('#sheet');
   if (sheet && N.products.length) {
     const body = $('[data-sheet-body]', sheet);
     const catalogue = new Map(N.products.map((p) => [p.slug, p]));
-    let lastFocus = null;
 
     const render = (p) => {
       const thumbs =
@@ -154,7 +159,7 @@
   ${thumbs}
 </div>
 <div class="sheet__info">
-  <p class="sheet__cat">${esc(p.catLabel)}${p.therapist ? ' · Therapist Range' : ''}</p>
+  <p class="sheet__cat">${esc(p.catLabel)}${p.therapist ? ' · Therapist range' : ''}</p>
   <h2 class="sheet__title" id="sheet-title">${esc(p.name)}</h2>
   <p class="sheet__price">${money(p.price)}</p>
   <ol class="sheet__steps">
@@ -163,8 +168,8 @@
     <li>Collect in store at La Lucia Mall. Items put on hold must be collected within 3–4 working days.</li>
   </ol>
   <div class="sheet__actions">
-    <a class="pill" href="tel:${esc(SITE.tel)}">Call ${esc(SITE.phone)}</a>
-    <a class="pill pill--ghost" href="${mail}">Email your order</a>
+    <a class="btn" href="tel:${esc(SITE.tel)}">Call ${esc(SITE.phone)}</a>
+    <a class="btn btn--ghost" href="${mail}">Email your order</a>
   </div>
   <div class="sheet__more">
     <details><summary>Size guide</summary><div>
@@ -176,32 +181,61 @@
 </div>`;
     };
 
-    const open = (slug) => {
-      const p = catalogue.get(slug);
+    document.addEventListener('click', (e) => {
+      const trigger = e.target.closest('[data-open]');
+      if (!trigger) return;
+      const p = catalogue.get(trigger.dataset.open);
       if (!p) return;
+      e.preventDefault();
       lastFocus = document.activeElement;
       body.innerHTML = render(p);
       sheet.setAttribute('aria-labelledby', 'sheet-title');
       if (!sheet.open) sheet.showModal();
       sheet.scrollTop = 0;
       document.body.classList.add('is-locked');
-    };
-    document.addEventListener('click', (e) => {
-      const trigger = e.target.closest('[data-open]');
-      if (trigger) (e.preventDefault(), open(trigger.dataset.open));
     });
     sheet.addEventListener('click', (e) => {
-      if (e.target === sheet || e.target.closest('[data-sheet-close]')) return sheet.close();
       const thumb = e.target.closest('[data-thumb]');
-      if (thumb) {
-        $('[data-main]', sheet).src = thumb.dataset.thumb;
-        $$('.sheet__thumb', sheet).forEach((t) => t.classList.toggle('is-active', t === thumb));
-      }
+      if (!thumb) return;
+      $('[data-main]', sheet).src = thumb.dataset.thumb;
+      $$('.sheet__thumb', sheet).forEach((t) => t.classList.toggle('is-active', t === thumb));
     });
-    sheet.addEventListener('close', () => {
-      document.body.classList.remove('is-locked');
-      if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
-    });
+  }
+
+  /* ------------------------------------------------------------------- Review slider */
+  const quotes = $('[data-quotes]');
+  if (quotes) {
+    const items = $$('.q', quotes);
+    let at = 0;
+    const show = (n) => {
+      at = (n + items.length) % items.length;
+      items.forEach((q, i) => {
+        q.classList.toggle('is-active', i === at);
+        q.setAttribute('aria-hidden', String(i !== at));
+      });
+    };
+    show(0);
+    $('[data-qprev]', quotes).addEventListener('click', () => show(at - 1));
+    $('[data-qnext]', quotes).addEventListener('click', () => show(at + 1));
+  }
+
+  /* ------------------------------------------------------------------ Scroll reveal */
+  const targets = $$('.sec__head, .split__img, .split__text, .pc, .tile, .range__img, .range__text, .quotes__img, .quotes__panel, .visit__cols > div, .band__in');
+  targets.forEach((el) => el.classList.add('rv'));
+  if ('IntersectionObserver' in window && !reduce) {
+    const io = new IntersectionObserver(
+      (entries) =>
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add('in');
+          io.unobserve(entry.target);
+        }),
+      { rootMargin: '0px 0px -4% 0px', threshold: 0.05 }
+    );
+    targets.forEach((t) => io.observe(t));
+    setTimeout(() => targets.forEach((t) => t.classList.add('in')), 6000);
+  } else {
+    targets.forEach((t) => t.classList.add('in'));
   }
 
   $$('[data-year]').forEach((el) => (el.textContent = new Date().getFullYear()));
