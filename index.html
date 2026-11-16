@@ -6,7 +6,7 @@
 <title>Nixz website concepts</title>
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#71C7C5">
-<meta name="description" content="Two website concepts for Nixz, built from the real collection, prices, photos and story.">
+<meta name="description" content="Three website concepts for Nixz, built from the real collection, prices, photos and story.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Nixz — Free Spirited Fashion">
 <meta property="og:title" content="A fresh look for Nixz">
@@ -32,6 +32,13 @@
   .card img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; }
   .card .trip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 0; aspect-ratio: 16 / 10; background: #fff; }
   .card .trip img { height: 100%; aspect-ratio: auto; object-position: 50% 20%; }
+  .card .card__shapes { display: flex; align-items: flex-end; justify-content: center; gap: 3%; aspect-ratio: 16 / 10; padding-inline: 6%; overflow: hidden; background: #fff; }
+  .card .m { display: block; flex: none; overflow: hidden; }
+  .card .m img { display: block; width: 100%; height: 100%; aspect-ratio: auto; object-fit: cover; object-position: 50% 14%; }
+  .card .m--circle { width: 28%; aspect-ratio: 1; border-radius: 50%; margin-bottom: 8%; }
+  .card .m--arch { width: 21%; aspect-ratio: 0.78; border-radius: 999px 999px 0 0; background: #fe9d66; }
+  .card .m--pill { width: 30%; aspect-ratio: 0.85; border-radius: 999px 999px 24px 24px; }
+  .card .m--leaf { width: 14%; aspect-ratio: 1; border-radius: 0 100% 0 100%; background: #71c7c5; margin-bottom: 8%; }
   .card div { display: flex; flex-direction: column; gap: 6px; padding: 24px 26px 28px; }
   .tag { font-size: 11px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-2); }
   .card h2 { margin: 0; font-size: 1.6rem; font-weight: 300; }
@@ -69,6 +76,20 @@
         <h2>Warm &amp; editorial</h2>
         <p>A centred logo over a three-panel hero, a scrolling ticker, product carousels with quick view, soft serif headlines and shop-by-category tiles. One flowing page with the full collection, therapist range and visit details.</p>
         <span class="go">View option 2</span>
+      </div>
+    </a>
+    <a class="card" href="option-3/">
+      <span class="card__shapes" aria-hidden="true">
+        <span class="m m--circle"><img src="option-3/assets/img/uploads/2020/04/orange-dress-scaled-600x900.jpg" alt="" loading="lazy"></span>
+        <span class="m m--arch"></span>
+        <span class="m m--pill"><img src="option-3/assets/img/uploads/2020/04/blue-dress-finished-600x900.jpg" alt="" loading="lazy"></span>
+        <span class="m m--leaf"></span>
+      </span>
+      <div>
+        <span class="tag">Option 3</span>
+        <h2>Bold &amp; playful</h2>
+        <p>Giant type with hand-drawn underlines, numbered sections, pill buttons and a “Find your fit” quiz that matches pieces to your size. One flowing page with the full collection, therapist range, FAQ and contact details.</p>
+        <span class="go">View option 3</span>
       </div>
     </a>
   </div>
